@@ -59,7 +59,7 @@ export const ClienteService = {
       dataUltimaModificacao: new Date()
     })
 
-    PastaRepository.save(newPasta);
+    await PastaRepository.save(newPasta);
     return ClienteRepository.save(newCliente);
   },
 

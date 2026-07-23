@@ -1,6 +1,6 @@
 import { Pasta } from '../models/Pasta';
 import { PastaRepository } from '../repositories/PastaRepository';
-import { ILike } from "typeorm";
+import { ILike, IsNull } from "typeorm";
 
 export const PastaService = {
 
@@ -11,8 +11,8 @@ export const PastaService = {
     term?: string
   ): Promise<{ list: Pasta[], more: boolean, page: number, rpp: number }> {
     const where: any = term
-      ? { tenantId, parentId: null, nome: ILike(`%${term}%`) }
-      : { tenantId, parentId: null };
+      ? { tenantId, parentId: IsNull(), nome: ILike(`%${term}%`) }
+      : { tenantId, parentId: IsNull() };
 
     const [list, total] = await PastaRepository.findAndCount({
       where,

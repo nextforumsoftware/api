@@ -27,6 +27,10 @@ function mapError(err: any): MappedError {
     return { status: 401, message: "Token inválido ou expirado" };
   }
 
+  if (err?.name === "MulterError" && err?.code === "LIMIT_FILE_SIZE") {
+    return { status: 400, message: "Arquivo excede o limite de 50MB" };
+  }
+
   const legacyStatus = Number(err?.status ?? err?.statusCode); // throws no formato { status, message }
   if (Number.isInteger(legacyStatus) && legacyStatus >= 400) {
     return { status: legacyStatus, message: err?.message ?? "Erro" };

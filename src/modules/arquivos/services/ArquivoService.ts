@@ -42,11 +42,14 @@ export const ArquivoService = {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'image/jpeg', 'image/png', 'image/gif', 'image/webp',
       'text/csv', 'text/plain',
+      'video/mp4',
     ];
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw { status: 400, message: 'Tipo de arquivo não permitido' };
     }
+
+    const isVideo = file.mimetype === 'video/mp4';
 
     let buffer = file.buffer;
     if (buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
@@ -55,7 +58,13 @@ export const ArquivoService = {
 
     const textBased = ['text/csv', 'text/plain'].includes(file.mimetype);
 
-    if (!textBased) {
+    if (isVideo) {
+      const isValidVideo = buffer.toString('ascii', 4, 8) === 'ftyp';
+
+      if (!isValidVideo) {
+        throw { status: 400, message: 'Arquivo com formato interno inválido' };
+      }
+    } else if (!textBased) {
       const header = buffer.toString('hex', 0, 4);
       const isKnown = /^(25504446|89504e47|ffd8ff|47494638|52494646|504b0304|d0cf11e0)/.test(header);
 
@@ -74,6 +83,7 @@ export const ArquivoService = {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
       'text/csv': 'csv',
       'text/plain': 'txt',
+      'video/mp4': 'mp4',
     };
 
     const extension = extensionMap[file.mimetype] || 'bin';

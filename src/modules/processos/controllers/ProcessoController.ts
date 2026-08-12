@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { ProcessoService } from "../services/ProcessoService";
+import { tenantIdOrThrow } from "../../../core/utils/tenantIdOrThrow";
 
 export const ProcessoController = {
   async get(req: Request, res: Response, next: NextFunction) {
     try {
-      const tenantId = req.user!.tenantId!;
+      const tenantId = tenantIdOrThrow(req);
       const page = parseInt(req.query.page as string) || 1;
       const rpp = parseInt(req.query.rpp as string) || 20;
       const filters = {
@@ -21,18 +22,21 @@ export const ProcessoController = {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
-      res.json(await ProcessoService.get(id, req.user!.tenantId!));
+      const tenantId = tenantIdOrThrow(req);
+
+      res.json(await ProcessoService.get(id, tenantId));
     } catch (err) { next(err); }
   },
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
+      const tenantId = tenantIdOrThrow(req);
       const { clienteId, ...rest } = req.body;
 
       const processo = await ProcessoService.create({
         ...rest,
         createdByUser: req.user!.id,
-        tenantId: req.user!.tenantId,
+        tenantId,
         cliente: { id: clienteId }
       });
 
@@ -45,21 +49,27 @@ export const ProcessoController = {
   async update(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
-      res.json(await ProcessoService.update(id, req.user!.tenantId!, req.body));
+      const tenantId = tenantIdOrThrow(req);
+
+      res.json(await ProcessoService.update(id, tenantId, req.body));
     } catch (err) { next(err); }
   },
 
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
-      await ProcessoService.remove(id, req.user!.tenantId!);
+      const tenantId = tenantIdOrThrow(req);
+
+      await ProcessoService.remove(id, tenantId);
       res.status(204).send();
     } catch (err) { next(err); }
   },
 
   async dashboard(req: Request, res: Response, next: NextFunction) {
     try {
-      res.json(await ProcessoService.dashboard(req.user!.tenantId!));
+      const tenantId = tenantIdOrThrow(req);
+
+      res.json(await ProcessoService.dashboard(tenantId));
     } catch (err) { next(err); }
   },
 }

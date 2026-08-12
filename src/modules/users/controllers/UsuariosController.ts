@@ -1,12 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { UsuariosService } from "../services/UsuariosService";
-import { AppError } from "../../../core/exceptions/HttpException";
-
-function tenantIdOrThrow(req: Request): string {
-  const tenantId = req.user!.tenantId;
-  if (!tenantId) throw new AppError("Usuário não está vinculado a um escritório");
-  return tenantId;
-}
+import { tenantIdOrThrow } from "../../../core/utils/tenantIdOrThrow";
 
 export const UsuariosController = {
   async list(req: Request, res: Response, next: NextFunction) {

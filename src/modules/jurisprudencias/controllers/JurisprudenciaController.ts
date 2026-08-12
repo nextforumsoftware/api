@@ -1,26 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../../users/services/AuthService';
+import { Readable } from 'stream';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { s3Client } from '../../../config/awsConfig';
 import { JurisprudenciaService } from '../services/JurisprudenciaService';
-import axios from "axios";
+import { tenantIdOrThrow } from '../../../core/utils/tenantIdOrThrow';
 
 export const JurisprudenciaController = {
 
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      if (!token) {
-        return res.status(401).json({ message: "Token não fornecido" });
-      }
+      const tenantId = tenantIdOrThrow(req);
+      const page = parseInt(req.query.page as string) || 1;
+      const rpp = parseInt(req.query.rpp as string) || 20;
+      const filters = {
+        ...(req.query.termo !== undefined && { termo: req.query.termo as string }),
+        ...(req.query.tribunal !== undefined && { tribunal: req.query.tribunal as string }),
+        ...(req.query.tipoAcao !== undefined && { tipoAcao: req.query.tipoAcao as string }),
+        ...(req.query.favorito !== undefined && { favorito: req.query.favorito === 'true' }),
+      };
+      res.json(await JurisprudenciaService.list(tenantId, page, rpp, filters));
+    } catch (err) {
+      next(err);
+    }
+  },
 
-      const processoId = req.params.processoId as string;
-      
-      if (!processoId) {
-        return res.status(400).json({ message: "ID do processo é obrigatório" });
-      }
+  async getById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const tenantId = tenantIdOrThrow(req);
 
-      const user = await AuthService.userInfo(token);
-      const jurisprudencias = await JurisprudenciaService.list(user.id);
-      res.json(jurisprudencias);
+      res.json(await JurisprudenciaService.get(tenantId, id));
     } catch (err) {
       next(err);
     }
@@ -28,19 +37,33 @@ export const JurisprudenciaController = {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      if (!token) {
-        return res.status(401).json({ message: "Token não fornecido" });
-      }
+      const tenantId = tenantIdOrThrow(req);
+      const { favorito, ...rest } = req.body;
 
-      const processoId = req.body.processoId as string;
-      if (!processoId) {
-        return res.status(400).json({ message: "Processo não informado" });
-      }
+      const data = {
+        ...rest,
+        ...(favorito !== undefined && { favorito: favorito === 'true' || favorito === true }),
+      };
 
-      const user = await AuthService.userInfo(token);
-      const newJurisprudencia = await JurisprudenciaService.create(user.id, req.body);
-      res.status(201).json(newJurisprudencia);
+      const novaJurisprudencia = await JurisprudenciaService.create(
+        tenantId,
+        req.user!.id,
+        data,
+        req.file
+      );
+
+      res.status(201).json(novaJurisprudencia);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async update(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const tenantId = tenantIdOrThrow(req);
+
+      res.json(await JurisprudenciaService.update(tenantId, id, req.body));
     } catch (err) {
       next(err);
     }
@@ -48,82 +71,40 @@ export const JurisprudenciaController = {
 
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      if (!token) {
-        return res.status(401).json({ message: "Token não fornecido" });
-      }
+      const id = String(req.params.id);
+      const tenantId = tenantIdOrThrow(req);
 
-      const jurisprudenciaId = req.params.jurisprudenciaId as string;
-      if (!jurisprudenciaId) {
-        return res.status(400).json({ message: "ID do Processo é obrigatório" });
-      }
-
-      const user = await AuthService.userInfo(token);
-      await JurisprudenciaService.remove(user.id, jurisprudenciaId);
+      await JurisprudenciaService.remove(tenantId, id);
       res.status(204).send();
     } catch (err) {
       next(err);
     }
   },
 
-  async buscaRs(req: Request, res: Response, next: NextFunction) {
+  async download(req: Request, res: Response, next: NextFunction) {
     try {
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      if (!token) {
-        return res.status(401).json({ message: "Token não fornecido" });
+      const id = String(req.params.id);
+      const tenantId = tenantIdOrThrow(req);
+
+      const jurisprudencia = await JurisprudenciaService.get(tenantId, id);
+
+      if (!jurisprudencia.arquivoChaveS3) {
+        return res.status(400).json({ message: "Esta jurisprudência não possui arquivo anexado" });
       }
 
-      await AuthService.userInfo(token);
+      const command = new GetObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: jurisprudencia.arquivoChaveS3,
+      });
 
-      const { termo, tipoConsulta = "ementa", pagina = 1 } = req.body;
+      const s3Response = await s3Client.send(command);
 
-      if (!termo) {
-        return res.status(400).json({ message: "Termo de busca é obrigatório" });
-      }
+      res.setHeader('Content-Type', s3Response.ContentType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(jurisprudencia.arquivoNomeOriginal ?? 'arquivo')}"`);
 
-      const conteudoBusca = tipoConsulta === "Inteiro Teor" ? "documento_text" : "ementa_completa";
-      const start = (Number(pagina) - 1) * 10;
-
-      const parametros = new URLSearchParams({
-        aba: "jurisprudencia",
-        realizando_pesquisa: "1",
-        pagina_atual: String(pagina),
-        q_palavra_chave: termo,
-        conteudo_busca: conteudoBusca,
-        wt: "json",
-        ordem: "desc",
-        start: String(start),
-      }).toString();
-
-      const body = new URLSearchParams({
-        action: "consultas_solr_ajax",
-        metodo: "buscar_resultados",
-        parametros,
-      }).toString();
-
-      const response = await axios.post(
-        "https://tjrs-proxy.andersongpatricio.workers.dev",
-        body,
-        { headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" } }
-      );
-
-      const solr = response.data;
-      const docs = solr.response?.docs ?? [];
-
-      const resultados = docs.map((doc: any) => ({
-        codEmenta: doc.cod_ementa,
-        numeroProcesso: doc.numero_processo,
-        tipoProcesso: doc.tipo_processo || doc.nome_classe_cnj,
-        ementa: (Array.isArray(doc.ementa_completa) ? doc.ementa_completa[0] : doc.ementa_completa)?.trim(),
-        relator: Array.isArray(doc.relator_redator) ? doc.relator_redator[0] : doc.nome_relator,
-        orgaoJulgador: doc.orgao_julgador,
-        dataJulgamento: doc.data_julgamento ? doc.data_julgamento.split('T')[0] : null,
-      }));
-
-      res.json({ total: solr.response?.numFound ?? 0, resultados });
-
+      (s3Response.Body as Readable).pipe(res);
     } catch (err) {
       next(err);
     }
-  }
+  },
 };

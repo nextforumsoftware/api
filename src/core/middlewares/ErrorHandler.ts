@@ -28,7 +28,7 @@ function mapError(err: any): MappedError {
   }
 
   if (err?.name === "MulterError" && err?.code === "LIMIT_FILE_SIZE") {
-    return { status: 400, message: "Arquivo excede o limite de 50MB" };
+    return { status: 400, message: "Arquivo excede o tamanho máximo permitido" };
   }
 
   const legacyStatus = Number(err?.status ?? err?.statusCode); // throws no formato { status, message }

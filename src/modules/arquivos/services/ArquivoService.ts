@@ -12,7 +12,7 @@ export const ArquivoService = {
       throw { status: 404, message: "Pasta não encontrada" };
     }
 
-    return ArquivoRepository.findBy({ pastaId, tenantId });
+    return (await ArquivoRepository.findBy({ pastaId, tenantId }));
   },
 
   async get(tenantId: string, arquivoId: string): Promise<Arquivo> {

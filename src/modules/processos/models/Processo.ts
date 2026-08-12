@@ -1,10 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, JoinColumn, ManyToOne, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, JoinColumn, ManyToOne } from "typeorm";
 import { TipoAcaoProcessoEnum } from "./TipoAcaoProcessoEnum";
 import { StatusProcessoEnum } from "./StatusProcessoEnum";
 import { InstanciaProcessoEnum } from "./InstanciaProcessoEnum";
 import { EsferaProcessoEnum } from "./EsferaProcessoEnum";
 import { Cliente } from "../../clientes/models/Cliente";
-import { Jurisprudencia } from "../../jurisprudencias/models/Jurisprudencia";
 import { Empresa } from "../../empresas/models/Empresa";
 
 @Entity('processos')
@@ -82,10 +81,6 @@ export class Processo{
 
   @CreateDateColumn()
   createdAt!: Date;
-
-  @OneToMany(() => Jurisprudencia, (Jurisprudencia) => Jurisprudencia.id)
-  @JoinColumn({ name: "JurisprudenciaId" })
-  jurisprudencias?: Jurisprudencia[]
 
   @Column({
     type: "enum",

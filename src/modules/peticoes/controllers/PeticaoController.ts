@@ -1,7 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { PeticaoService } from '../services/PeticaoService';
+import { PeticaoIAService } from '../services/PeticaoIAService';
 
 export const PeticaoController = {
+  async gerarComIA(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { tipo, prompt } = req.body;
+      const conteudo = await PeticaoIAService.gerar(tipo, prompt);
+      res.json({ conteudo });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       const peticoes = await PeticaoService.list(req.user!.tenantId!);

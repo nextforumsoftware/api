@@ -1,0 +1,6 @@
+export enum TipoPrazoEnum {
+  FATAL = "FATAL",
+  ORDINATORIO = "ORDINATORIO",
+  AUDIENCIA = "AUDIENCIA",
+  OUTROS = "OUTROS",
+}

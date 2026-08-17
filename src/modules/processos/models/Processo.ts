@@ -54,9 +54,6 @@ export class Processo{
   @Column({ type: "date", nullable: true })
   dataDistribuicao?: Date;
 
-  @Column({ type: "date", nullable: true })
-  dataPrazo?: Date;
-
   @Column({ type: "numeric", precision: 15, scale: 2, nullable: true })
   valorCausa?: number
 

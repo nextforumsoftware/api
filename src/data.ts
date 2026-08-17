@@ -10,6 +10,7 @@ import { Jurisprudencia } from "./modules/jurisprudencias/models/Jurisprudencia"
 import { Peticao } from "./modules/peticoes/models/Peticao";
 import { Empresa } from "./modules/empresas/models/Empresa";
 import { TimelineEvento } from "./modules/timelines/models/TimelineEvento";
+import { Prazo } from "./modules/prazos/models/Prazo";
 
 dotenv.config();
 
@@ -18,5 +19,5 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL!,
   synchronize: true,
   logging: false,
-  entities: [Cliente, User, Processo, Pasta, Arquivo, Jurisprudencia, Peticao, Empresa, TimelineEvento],
+  entities: [Cliente, User, Processo, Pasta, Arquivo, Jurisprudencia, Peticao, Empresa, TimelineEvento, Prazo],
 });

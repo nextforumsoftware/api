@@ -99,7 +99,6 @@ export const ProcessoService = {
 
   async dashboard(tenantId: string): Promise<{
     stats: { status: string; total: number }[];
-    proximosPrazos: Processo[];
   }> {
     const statuses = ['ANDAMENTO', 'JULGAMENTO', 'SENTENCA', 'RECURSO', 'ARQUIVADO'];
 
@@ -112,14 +111,6 @@ export const ProcessoService = {
       })
     );
 
-    const proximosPrazos = await ProcessoRepository.createQueryBuilder('p')
-      .where('p.tenantId = :tenantId', { tenantId })
-      .andWhere("p.status != 'ARQUIVADO'")
-      .andWhere('p.dataPrazo IS NOT NULL')
-      .orderBy('p.dataPrazo', 'ASC')
-      .take(10)
-      .getMany();
-
-    return { stats, proximosPrazos };
+    return { stats };
   },
 };

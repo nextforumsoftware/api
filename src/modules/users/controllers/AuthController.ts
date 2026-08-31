@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthService } from "../services/AuthService";
-import { getPresignedUrl, uploadFile } from "../../../controllers/s3Controller";
+import { S3Service } from "../../../core/services/S3Service";
 
 function toS3Key(value: string): string {
   if (value.startsWith('http')) return new URL(value).pathname.slice(1);
@@ -14,7 +14,7 @@ export const AuthController = {
       const result = await AuthService.login(email, password);
       return res.json(result);
     } catch (err: any) {
-      return res.status(400).json({ error: err.message });
+      return res.status(err.status ?? 400).json({ error: err.message });
     }
   },
 
@@ -29,23 +29,21 @@ export const AuthController = {
       if (req.file) {
         const ext = req.file.originalname.split('.').pop();
         const key = `perfil/${userId}.${ext}`;
-        const result = await uploadFile({
-          fileName: req.file.originalname,
-          fileNameKey: key,
-          fileType: req.file.mimetype,
+        const result = await S3Service.upload({
+          key,
+          contentType: req.file.mimetype,
           buffer: req.file.buffer,
         });
-        if (!result.success) return res.status(500).json({ error: result.message });
-        fotoKey = result.data!.key;
+        fotoKey = result.key;
       }
 
       const user = await AuthService.updatePerfil(userId, nome, email, novaSenha, fotoKey);
       if (user.fotoPerfil) {
-        user.fotoPerfil = await getPresignedUrl(toS3Key(user.fotoPerfil));
+        user.fotoPerfil = await S3Service.getPresignedUrl(toS3Key(user.fotoPerfil));
       }
       return res.json({ user });
     } catch (err: any) {
-      return res.status(400).json({ error: err.message });
+      return res.status(err.status ?? 400).json({ error: err.message });
     }
   },
 
@@ -56,7 +54,7 @@ export const AuthController = {
 
       const user = await AuthService.userInfo(token);
       if (user.fotoPerfil) {
-        user.fotoPerfil = await getPresignedUrl(toS3Key(user.fotoPerfil));
+        user.fotoPerfil = await S3Service.getPresignedUrl(toS3Key(user.fotoPerfil));
       }
       return res.json({ user });
     } catch {

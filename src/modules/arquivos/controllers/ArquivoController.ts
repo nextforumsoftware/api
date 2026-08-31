@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Readable } from 'stream';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client } from '../../../config/awsConfig';
+import { S3Service } from '../../../core/services/S3Service';
 import { ArquivoService } from '../services/ArquivoService';
 import { ArquivoRepository } from '../repositories/ArquivoRepository';
 
@@ -91,17 +89,12 @@ export const ArquivoController = {
       const arquivo = await ArquivoRepository.findOneBy({ id: arquivoId, tenantId: req.user!.tenantId! });
       if (!arquivo) return res.status(404).json({ message: 'Arquivo não encontrado' });
 
-      const command = new GetObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: arquivo.nomeFisico,
-      });
+      const s3Response = await S3Service.get(arquivo.nomeFisico);
 
-      const s3Response = await s3Client.send(command);
-
-      res.setHeader('Content-Type', s3Response.ContentType || 'application/octet-stream');
+      res.setHeader('Content-Type', s3Response.contentType || 'application/octet-stream');
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(arquivo.nome)}"`);
 
-      (s3Response.Body as Readable).pipe(res);
+      (s3Response.body as Readable).pipe(res);
     } catch (err) {
       next(err);
     }
@@ -115,12 +108,7 @@ export const ArquivoController = {
       const arquivo = await ArquivoRepository.findOneBy({ id: arquivoId, tenantId: req.user!.tenantId! });
       if (!arquivo) return res.status(404).json({ message: 'Arquivo não encontrado' });
 
-      const command = new GetObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: arquivo.nomeFisico,
-      });
-
-      const url = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+      const url = await S3Service.getPresignedUrl(arquivo.nomeFisico, 900);
 
       res.json({ url });
     } catch (err) {

@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PastaRepository } from '../../pasta/repositories/PastaRepository';
 import { Arquivo } from '../models/Arquivo';
 import { ArquivoRepository } from '../repositories/ArquivoRepository';
-import { uploadFile } from '../../../controllers/s3Controller';
+import { S3Service } from '../../../core/services/S3Service';
 
 export const ArquivoService = {
 
@@ -88,18 +88,12 @@ export const ArquivoService = {
 
     const extension = extensionMap[file.mimetype] || 'bin';
     const fileNameKey = `${uuidv4()}.${extension}`;
-    const fileName = file.filename
 
-    const uploadResult = await uploadFile({
-      fileName,
-      fileNameKey,
-      fileType: file.mimetype,
+    const uploadResult = await S3Service.upload({
+      key: fileNameKey,
+      contentType: file.mimetype,
       buffer: buffer,
     });
-
-    if (!uploadResult.success) {
-      throw { status: 500, message: "Erro no upload do arquivo" };
-    }
 
     const newArquivo = ArquivoRepository.create({
       id: uuidv4(),
@@ -107,7 +101,7 @@ export const ArquivoService = {
       tenantId,
       nome: Buffer.from(file.originalname, 'latin1').toString('utf8'),
       nomeFisico: fileNameKey,
-      url: uploadResult.data?.fileUrl!
+      url: uploadResult.url
     });
 
     await PastaRepository.update(pastaId, { dataUltimaModificacao: new Date() });

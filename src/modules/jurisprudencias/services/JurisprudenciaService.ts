@@ -4,7 +4,7 @@ import { Jurisprudencia } from '../models/Jurisprudencia';
 import { JurisprudenciaRepository } from '../repositories/JurisprudenciaRepository';
 import { OrigemJurisprudenciaEnum } from '../models/OrigemJurisprudenciaEnum';
 import { TipoAcaoJurisprudenciaEnum } from '../models/TipoAcaoJurisprudenciaEnum';
-import { uploadFile, deleteFile } from '../../../controllers/s3Controller';
+import { S3Service } from '../../../core/services/S3Service';
 
 type ListFilters = {
   termo?: string;
@@ -138,9 +138,10 @@ export const JurisprudenciaService = {
     if (!jurisprudencia) throw { status: 404, message: "Jurisprudência não encontrada" };
 
     if (jurisprudencia.arquivoChaveS3) {
-      const resultado = await deleteFile(jurisprudencia.arquivoChaveS3);
-      if (!resultado.success) {
-        console.error(`Falha ao excluir arquivo ${jurisprudencia.arquivoChaveS3} do S3: ${resultado.error}`);
+      try {
+        await S3Service.remove(jurisprudencia.arquivoChaveS3);
+      } catch (error) {
+        console.error(`Falha ao excluir arquivo ${jurisprudencia.arquivoChaveS3} do S3`, error);
       }
     }
 
@@ -181,19 +182,14 @@ async function enviarArquivoParaS3(file: Express.Multer.File) {
 
   const fileNameKey = `jurisprudencias/${uuidv4()}.${extensao}`;
 
-  const uploadResult = await uploadFile({
-    fileName: file.originalname,
-    fileNameKey,
-    fileType: file.mimetype,
+  const uploadResult = await S3Service.upload({
+    key: fileNameKey,
+    contentType: file.mimetype,
     buffer: file.buffer,
   });
 
-  if (!uploadResult.success) {
-    throw { status: 500, message: "Erro no upload do arquivo" };
-  }
-
   return {
-    url: uploadResult.data!.fileUrl,
+    url: uploadResult.url,
     chave: fileNameKey,
     nomeOriginal: Buffer.from(file.originalname, 'latin1').toString('utf8'),
   };

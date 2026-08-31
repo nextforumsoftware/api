@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Readable } from 'stream';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { s3Client } from '../../../config/awsConfig';
+import { S3Service } from '../../../core/services/S3Service';
 import { JurisprudenciaService } from '../services/JurisprudenciaService';
 import { tenantIdOrThrow } from '../../../core/utils/tenantIdOrThrow';
 
@@ -92,17 +91,12 @@ export const JurisprudenciaController = {
         return res.status(400).json({ message: "Esta jurisprudência não possui arquivo anexado" });
       }
 
-      const command = new GetObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: jurisprudencia.arquivoChaveS3,
-      });
+      const s3Response = await S3Service.get(jurisprudencia.arquivoChaveS3);
 
-      const s3Response = await s3Client.send(command);
-
-      res.setHeader('Content-Type', s3Response.ContentType || 'application/octet-stream');
+      res.setHeader('Content-Type', s3Response.contentType || 'application/octet-stream');
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(jurisprudencia.arquivoNomeOriginal ?? 'arquivo')}"`);
 
-      (s3Response.Body as Readable).pipe(res);
+      (s3Response.body as Readable).pipe(res);
     } catch (err) {
       next(err);
     }

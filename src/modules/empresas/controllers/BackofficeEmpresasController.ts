@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { BackofficeEmpresasService } from "../services/BackofficeEmpresasService";
-import { getPresignedUrl, uploadFile } from "../../../controllers/s3Controller";
+import { S3Service } from "../../../core/services/S3Service";
 import { Empresa } from "../models/Empresa";
 
 function toS3Key(value: string): string {
@@ -10,7 +10,7 @@ function toS3Key(value: string): string {
 
 async function resolveLogoUrl(empresa: Empresa): Promise<Empresa> {
   if (empresa.logo) {
-    empresa.logo = await getPresignedUrl(toS3Key(empresa.logo));
+    empresa.logo = await S3Service.getPresignedUrl(toS3Key(empresa.logo));
   }
   return empresa;
 }
@@ -58,13 +58,11 @@ export const BackofficeEmpresasController = {
 
       const ext = req.file.mimetype.split("/")[1] || req.file.originalname.split(".").pop() || "png";
       const key = `escritorios/${id}/logo.${ext}`;
-      const result = await uploadFile({
-        fileName: req.file.originalname,
-        fileNameKey: key,
-        fileType: req.file.mimetype,
+      await S3Service.upload({
+        key,
+        contentType: req.file.mimetype,
         buffer: req.file.buffer,
       });
-      if (!result.success) return res.status(500).json({ message: result.message });
 
       const empresa = await BackofficeEmpresasService.updateLogo(id, key);
       return res.json(await resolveLogoUrl(empresa));

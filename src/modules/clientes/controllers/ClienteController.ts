@@ -44,6 +44,9 @@ export const ClienteController = {
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
+      if (!id) {
+        return res.status(400).json({ message: "ID do cliente é obrigatório" });
+      }
       await ClienteService.remove(id, req.user!.tenantId!);
       res.status(204).send();
     } catch (err) { next(err); }

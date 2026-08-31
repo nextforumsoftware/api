@@ -1,6 +1,7 @@
 import { ProcessoRepository } from "../../processos/repositories/ProcessoRepository";
 import { TimelineEventoRepository } from "../repositories/TimelineEventoRepository";
 import { TimelineEvento } from "../models/TimelineEvento";
+import { NotFoundException } from "../../../core/exceptions/HttpException";
 
 export const TimelineService = {
   async resumo(tenantId: string): Promise<object[]> {
@@ -10,18 +11,18 @@ export const TimelineService = {
     });
 
     return Promise.all(
-      processos.map(async (p) => {
-        const totalEventos = await TimelineEventoRepository.count({ where: { processoId: p.id } });
+      processos.map(async (processo) => {
+        const totalEventos = await TimelineEventoRepository.count({ where: { processoId: processo.id } });
         const ultimo = await TimelineEventoRepository.findOne({
-          where: { processoId: p.id },
+          where: { processoId: processo.id },
           order: { data: "DESC", createdAt: "DESC" },
         });
         return {
-          id: p.id,
-          numeroProcesso: p.numeroProcesso,
-          status: p.status,
-          tipoAcaoProcesso: p.tipoAcaoProcesso,
-          parteContraria: p.parteContraria,
+          id: processo.id,
+          numeroProcesso: processo.numeroProcesso,
+          status: processo.status,
+          tipoAcaoProcesso: processo.tipoAcaoProcesso,
+          parteContraria: processo.parteContraria,
           totalEventos,
           ultimoEvento: ultimo
             ? { titulo: ultimo.titulo, tipo: ultimo.tipo, data: String(ultimo.data) }
@@ -65,10 +66,6 @@ export const TimelineService = {
     await TimelineEventoRepository.remove(evento);
   },
 
-  /**
-   * Rota pública: verifica se os 4 últimos chars do numeroProcesso batem com o pin
-   * e retorna os eventos + dados básicos do processo.
-   */
   async getPublicTimeline(processoId: string, pin: string): Promise<{
     processo: { numeroProcesso: string; status: string; tipoAcaoProcesso: string; cliente?: string };
     eventos: TimelineEvento[];
@@ -78,7 +75,7 @@ export const TimelineService = {
       relations: ["cliente"],
     });
 
-    if (!processo) throw { status: 404, message: "Processo não encontrado" };
+    if (!processo) throw new NotFoundException("Processo não encontrado")
 
     const ultimosQuatro = processo.numeroProcesso.replace(/\D/g, "").slice(-4);
     if (ultimosQuatro !== pin.trim()) {

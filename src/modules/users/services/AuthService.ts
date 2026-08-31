@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { AuthRepository } from "../repositories/AuthRepository";
+import { UnauthorizedException } from "../../../core/exceptions/HttpException";
 
 dotenv.config();
 
@@ -12,10 +13,10 @@ export const AuthService = {
     if (!email || !password) throw new Error("Credenciais não informadas");
 
     const user = await AuthRepository.findOne({ where: { email }, relations: ["empresa"] });
-    if (!user) throw new Error("Credenciais Inválidas");
+    if (!user) throw new UnauthorizedException("Credenciais Inválidas");
 
     const matches = await bcrypt.compare(password, user.password);
-    if (!matches) throw new Error("Credenciais Inválidas");
+    if (!matches) throw new UnauthorizedException("Credenciais Inválidas");
 
     if (!user.ativo) throw new Error("Usuário inativo. Entre em contato com o administrador do escritório.");
 

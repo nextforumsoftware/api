@@ -69,6 +69,9 @@ export class Processo{
   @Column({ type: "text", nullable: true })
   createdByUser!: string;
 
+  @Column({ type: "timestamp with time zone", nullable: true })
+  ultimaSincronizacao?: Date | null;
+
   @Column({ type: "uuid", nullable: true })
   tenantId?: string;
 

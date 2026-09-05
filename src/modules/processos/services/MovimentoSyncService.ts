@@ -13,47 +13,58 @@ export const MovimentoSyncService = {
     const processo = await ProcessoRepository.findOneBy({ id: processoId, tenantId });
     if (!processo) throw new NotFoundException("Processo não encontrado");
 
-    const dadosDatajud = await DatajudService.consultarProcesso(processo.numeroProcesso);
-    const movimentos = (dadosDatajud.movimentos ?? []).filter(temDadosMinimos);
-    if (movimentos.length === 0) return { inseridos: 0 };
+    const resultado = await importarMovimentos(processo.id, processo.numeroProcesso, tenantId);
+    await ProcessoRepository.update(processo.id, { ultimaSincronizacao: new Date() });
 
-    const preparados = movimentos.map((movimento) => ({ id: randomUUID(), movimento }));
-
-    return AppDataSource.transaction(async (manager) => {
-      const movimentoRepository = manager.withRepository(MovimentoProcessoRepository);
-      const detalhesRepository = manager.withRepository(DetalhesMovimentoRepository);
-
-      const resultado = await movimentoRepository
-        .createQueryBuilder()
-        .insert()
-        .into(MovimentoProcesso)
-        .values(preparados.map((preparado) => montarMovimento(preparado, processoId, tenantId)))
-        .orIgnore()
-        .returning("id")
-        .execute();
-
-      const idsInseridos = new Set<string>(resultado.raw.map((linha: { id: string }) => linha.id));
-      if (idsInseridos.size === 0) return { inseridos: 0 };
-
-      const detalhes = preparados
-        .filter((preparado) => idsInseridos.has(preparado.id))
-        .flatMap((preparado) => montarDetalhes(preparado, tenantId));
-
-      if (detalhes.length > 0) {
-        await detalhesRepository
-          .createQueryBuilder()
-          .insert()
-          .into(DetalhesMovimento)
-          .values(detalhes)
-          .execute();
-      }
-
-      return { inseridos: idsInseridos.size };
-    });
+    return resultado;
   },
 };
 
 type MovimentoPreparado = { id: string; movimento: MovimentoDatajud };
+
+async function importarMovimentos(
+  processoId: string,
+  numeroProcesso: string,
+  tenantId: string
+): Promise<{ inseridos: number }> {
+  const dadosDatajud = await DatajudService.consultarProcesso(numeroProcesso);
+  const movimentos = (dadosDatajud.movimentos ?? []).filter(temDadosMinimos);
+  if (movimentos.length === 0) return { inseridos: 0 };
+
+  const preparados = movimentos.map((movimento) => ({ id: randomUUID(), movimento }));
+
+  return AppDataSource.transaction(async (manager) => {
+    const movimentoRepository = manager.withRepository(MovimentoProcessoRepository);
+    const detalhesRepository = manager.withRepository(DetalhesMovimentoRepository);
+
+    const resultado = await movimentoRepository
+      .createQueryBuilder()
+      .insert()
+      .into(MovimentoProcesso)
+      .values(preparados.map((preparado) => montarMovimento(preparado, processoId, tenantId)))
+      .orIgnore()
+      .returning("id")
+      .execute();
+
+    const idsInseridos = new Set<string>(resultado.raw.map((linha: { id: string }) => linha.id));
+    if (idsInseridos.size === 0) return { inseridos: 0 };
+
+    const detalhes = preparados
+      .filter((preparado) => idsInseridos.has(preparado.id))
+      .flatMap((preparado) => montarDetalhes(preparado, tenantId));
+
+    if (detalhes.length > 0) {
+      await detalhesRepository
+        .createQueryBuilder()
+        .insert()
+        .into(DetalhesMovimento)
+        .values(detalhes)
+        .execute();
+    }
+
+    return { inseridos: idsInseridos.size };
+  });
+}
 
 function temDadosMinimos(movimento: MovimentoDatajud): boolean {
   return Number.isInteger(movimento?.codigo) && !Number.isNaN(new Date(movimento?.dataHora).getTime());

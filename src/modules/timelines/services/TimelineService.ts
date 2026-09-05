@@ -1,7 +1,8 @@
 import { ProcessoRepository } from "../../processos/repositories/ProcessoRepository";
+import { MovimentoProcessoRepository } from "../../processos/repositories/MovimentoProcessoRepository";
 import { TimelineEventoRepository } from "../repositories/TimelineEventoRepository";
 import { TimelineEvento } from "../models/TimelineEvento";
-import { NotFoundException } from "../../../core/exceptions/HttpException";
+import { AppError, NotFoundException } from "../../../core/exceptions/HttpException";
 
 export const TimelineService = {
   async resumo(tenantId: string): Promise<object[]> {
@@ -42,6 +43,8 @@ export const TimelineService = {
   async create(processoId: string, tenantId: string, data: Partial<TimelineEvento>): Promise<TimelineEvento> {
     const processo = await ProcessoRepository.findOneBy({ id: processoId, tenantId });
     if (!processo) throw { status: 404, message: "Processo não encontrado" };
+
+    if (data.movimentoId) await validarMovimento(data.movimentoId, processoId, tenantId);
 
     const evento = TimelineEventoRepository.create({
       ...data,
@@ -98,3 +101,11 @@ export const TimelineService = {
     };
   },
 };
+
+async function validarMovimento(movimentoId: string, processoId: string, tenantId: string): Promise<void> {
+  const movimento = await MovimentoProcessoRepository.findOneBy({ id: movimentoId, processoId, tenantId });
+  if (!movimento) throw new NotFoundException("Movimentação não encontrada");
+
+  const jaPromovido = await TimelineEventoRepository.findOneBy({ movimentoId });
+  if (jaPromovido) throw new AppError("Movimentação já está na timeline.");
+}

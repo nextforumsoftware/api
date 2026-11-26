@@ -12,6 +12,7 @@ import jurisprudenciasRoutes from "./routes/JurisprudenciaRoutes";
 import peticaoRoutes from "./routes/PeticaoRouter";
 import timelineRoutes from "./routes/TimelineRouter";
 import prazosRoutes from "./routes/PrazosRouter";
+import financeiroRoutes from "./routes/FinanceiroRouter";
 import { errorHandler } from "./core/middlewares/ErrorHandler";
 
 dotenv.config();
@@ -46,6 +47,7 @@ app.use(jurisprudenciasRoutes)
 app.use(peticaoRoutes)
 app.use(timelineRoutes)
 app.use(prazosRoutes)
+app.use(financeiroRoutes)
 
 app.use(errorHandler)
 

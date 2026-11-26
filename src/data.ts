@@ -13,6 +13,8 @@ import { TimelineEvento } from "./modules/timelines/models/TimelineEvento";
 import { Prazo } from "./modules/prazos/models/Prazo";
 import { MovimentoProcesso } from "./modules/processos/models/MovimentoProcesso";
 import { DetalhesMovimento } from "./modules/processos/models/DetalhesMovimento";
+import { Honorario } from "./modules/financeiro/models/Honorario";
+import { ParcelaHonorario } from "./modules/financeiro/models/ParcelaHonorario";
 
 dotenv.config();
 
@@ -21,5 +23,20 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL!,
   synchronize: true,
   logging: false,
-  entities: [Cliente, User, Processo, Pasta, Arquivo, Jurisprudencia, Peticao, Empresa, TimelineEvento, Prazo, MovimentoProcesso, DetalhesMovimento],
+  entities: [
+    Cliente, 
+    User, 
+    Processo, 
+    Pasta, 
+    Arquivo, 
+    Jurisprudencia, 
+    Peticao, 
+    Empresa, 
+    TimelineEvento, 
+    Prazo, 
+    MovimentoProcesso, 
+    DetalhesMovimento, 
+    Honorario, 
+    ParcelaHonorario
+  ],
 });

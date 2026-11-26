@@ -1,0 +1,8 @@
+export enum FormaPagamentoEnum {
+  PIX = "PIX",
+  BOLETO = "BOLETO",
+  TRANSFERENCIA = "TRANSFERENCIA",
+  CARTAO = "CARTAO",
+  DINHEIRO = "DINHEIRO",
+  OUTROS = "OUTROS",
+}
